@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Clock QR Code</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F5F4F1;padding:20px}
+  .card{background:#fff;border-radius:12px;padding:48px;text-align:center;max-width:420px;width:100%;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  .nav-footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #D4D0C8;padding:12px 20px;display:flex;justify-content:center;gap:20px}
+  .nav-link{font-size:.82rem;color:#3D5A80;text-decoration:none;font-weight:600}
+  .nav-link:hover{text-decoration:underline}
+  .nav-link.current{color:#7A7A7A;pointer-events:none}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:6px}
+  p{font-size:.88rem;color:#7A7A7A;margin-bottom:24px}
+  #qr{display:flex;justify-content:center;margin-bottom:24px}
+  #qr canvas,#qr img{border-radius:8px}
+  .url{font-size:.72rem;color:#7A7A7A;word-break:break-all;background:#F5F4F1;padding:10px;border-radius:6px;margin-bottom:20px}
+  .instructions{text-align:left;font-size:.82rem;color:#555;line-height:1.6}
+  .instructions strong{color:#2C2C2C}
+  .edit-area{margin-bottom:20px}
+  .edit-area label{font-size:.8rem;font-weight:600;color:#7A7A7A;display:block;margin-bottom:4px;text-align:left}
+  .edit-area input{width:100%;padding:10px;border:1px solid #D4D0C8;border-radius:6px;font-size:.9rem;font-family:inherit}
+  .btn{padding:10px 24px;background:#3D5A80;color:#fff;border:none;border-radius:6px;font-size:.88rem;cursor:pointer;font-family:inherit;margin-top:8px}
+  .btn:hover{opacity:.9}
+  @media print{body{background:#fff}.card{box-shadow:none;border:none;padding:20px}.edit-area,.btn{display:none}}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📱 Staff Time Clock</h1>
+  <p>Scan to clock in or out</p>
+  <div class="edit-area">
+    <label>Time Clock URL (update after deploying to GitHub Pages)</label>
+    <input type="text" id="url-input" value="" placeholder="https://yourname.github.io/schedule/timeclock.html"/>
+    <button class="btn" onclick="generateQR()">Generate QR Code</button>
+  </div>
+  <div id="qr"></div>
+  <div class="url" id="url-display"></div>
+  <div class="instructions">
+    <strong>How to use:</strong><br>
+    1. Open your phone camera<br>
+    2. Point it at the QR code<br>
+    3. Tap the link that appears<br>
+    4. Select your name and tap Clock In or Clock Out
+  </div>
+</div>
+<script>
+let qr=null;
+function generateQR(){
+  const url=document.getElementById('url-input').value.trim();
+  if(!url){alert('Enter the URL first.');return;}
+  document.getElementById('qr').innerHTML='';
+  qr=new QRCode(document.getElementById('qr'),{text:url,width:220,height:220,colorDark:'#2C2C2C',colorLight:'#FFFFFF'});
+  document.getElementById('url-display').textContent=url;
+}
+// Auto-generate if URL provided
+const input=document.getElementById('url-input');
+if(input.value)generateQR();
+</script>
+<nav class="nav-footer">
+  <a class="nav-link" href="index.html">📅 Schedule</a>
+  <a class="nav-link" href="timeclock.html">⏱ Time Clock</a>
+  <span class="nav-link current">📱 QR Code Setup</span>
+</nav>
+</body>
+</html>
