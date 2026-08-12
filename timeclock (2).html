@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Staff Time Clock</title>
+<style>
+  :root{--bg:#F5F4F1;--surface:#FFF;--border:#D4D0C8;--text:#2C2C2C;--muted:#7A7A7A;--accent:#3D5A80;
+    --green:#4A7C59;--green-bg:#F0F8F2;--red:#C1504D;--red-bg:#FFF0F0;
+    --warning:#B8860B;--warning-bg:#FFF8E7;--radius:10px;--font:'Segoe UI',system-ui,-apple-system,sans-serif}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .header-left h1{font-size:1.1rem;font-weight:600}
+  .header-clock{text-align:center}
+  .header-clock .time{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .header-clock .date{font-size:.72rem;color:var(--muted)}
+  .header-right{display:flex;gap:6px}
+  .btn-s{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:.78rem;cursor:pointer;font-family:var(--font)}
+  .btn-s:hover{background:var(--bg)}.btn-s.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .main{flex:1;padding:16px;max-width:600px;margin:0 auto;width:100%}
+  .view{display:none}.view.active{display:block}
+  .status-bar{text-align:center;padding:12px;border-radius:var(--radius);margin-bottom:16px;font-size:.88rem;font-weight:600}
+  .status-in{background:var(--green-bg);color:var(--green)}
+  .status-out{background:var(--red-bg);color:var(--red)}
+  .status-none{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+  .emp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .emp-btn{padding:14px 10px;border-radius:var(--radius);border:2px solid var(--border);background:var(--surface);font-size:.92rem;font-weight:600;cursor:pointer;font-family:var(--font);text-align:center;transition:all .15s}
+  .emp-btn:hover{border-color:var(--accent)}.emp-btn.selected{border-color:var(--accent);background:var(--accent);color:#fff}
+  .emp-btn .emp-st{display:block;font-size:.68rem;font-weight:400;margin-top:3px}
+  .emp-btn .emp-st.in{color:var(--green)}.emp-btn.selected .emp-st{color:rgba(255,255,255,.8)}
+  .action-area{display:flex;gap:12px;margin-bottom:16px}
+  .action-btn{flex:1;padding:18px;border-radius:var(--radius);border:none;font-size:1.1rem;font-weight:700;cursor:pointer;font-family:var(--font);color:#fff}
+  .action-btn:disabled{opacity:.3;cursor:not-allowed}
+  .action-btn.ci{background:var(--green)}.action-btn.co{background:var(--red)}
+  .action-btn:not(:disabled):hover{opacity:.9}
+  .pin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;padding:20px}
+  .pin-overlay.active{display:flex}
+  .pin-box{background:var(--surface);border-radius:var(--radius);padding:28px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+  .pin-box h3{font-size:1rem;margin-bottom:4px}
+  .pin-box .pin-sub{font-size:.82rem;color:var(--muted);margin-bottom:16px}
+  .pin-display{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+  .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);transition:all .15s}
+  .pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+  .pin-dot.error{background:var(--red);border-color:var(--red);animation:shake .3s ease}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto}
+  .pin-key{padding:16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);font-size:1.2rem;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .1s}
+  .pin-key:hover{background:var(--bg)}
+  .pin-key:active{background:var(--accent);color:#fff}
+  .pin-key.pin-del{font-size:.85rem;color:var(--muted)}
+  .pin-key.pin-cancel{font-size:.85rem;color:var(--red)}
+  .pin-error-msg{color:var(--red);font-size:.82rem;margin-top:10px;min-height:1.2em}
+  .feedback{text-align:center;padding:14px;border-radius:var(--radius);font-size:.9rem;font-weight:600;margin-bottom:16px;display:none}
+  .feedback.show{display:block;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .panel h3{font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .log-list{list-style:none}
+  .log-list li{padding:8px 0;border-bottom:1px solid #EEECE6;font-size:.85rem;display:flex;justify-content:space-between;align-items:center}
+  .log-list li:last-child{border-bottom:none}
+  .tag{font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:6px}
+  .tag-in{background:var(--green-bg);color:var(--green)}.tag-out{background:var(--red-bg);color:var(--red)}
+  .mgr-login{text-align:center;padding:40px 20px}
+  .mgr-login input{padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;width:100%;max-width:280px;margin-bottom:12px;outline:none}
+  .mgr-login .error{color:var(--red);font-size:.8rem;display:none;margin-bottom:8px}
+  .mgr-btn{padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:.88rem;cursor:pointer;font-family:var(--font)}
+  .late-card{background:var(--warning-bg);border:1px solid #E8D5A0;border-radius:var(--radius);padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .late-card.escalated{background:var(--red-bg);border-color:#E8A0A0}
+  .late-info{flex:1}.late-name{font-weight:700;font-size:.92rem}
+  .late-detail{font-size:.78rem;color:var(--muted);margin-top:2px}
+  .late-severity{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:6px}
+  .late-warn{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning)}
+  .late-esc{background:var(--red-bg);color:var(--red);border:1px solid var(--red)}
+  .stat-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .stat-box{flex:1;min-width:80px;background:var(--bg);padding:10px 14px;border-radius:var(--radius);text-align:center}
+  .stat-val{font-size:1.3rem;font-weight:700}.stat-label{font-size:.68rem;color:var(--muted)}
+  .mgr-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  .mgr-table th{text-align:left;padding:8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:2px solid var(--border)}
+  .mgr-table td{padding:8px;border-bottom:1px solid #EEECE6}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  .dot-in{background:var(--green)}.dot-out{background:var(--red)}.dot-late{background:var(--warning)}
+  .contact-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  .contact-table th{text-align:left;padding:6px 8px;font-size:.72rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)}
+  .contact-table td{padding:6px 8px;border-bottom:1px solid #EEECE6}
+  .contact-table input{padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:.82rem;width:100%;font-family:var(--font)}
+  .save-btn{padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:.82rem;cursor:pointer;font-family:var(--font);margin-top:10px}
+  .nav-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:center;gap:20px;flex-wrap:wrap}
+  .nav-link{font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600}
+  .nav-link:hover{text-decoration:underline}
+  .nav-link.current{color:var(--muted);pointer-events:none}
+  @media(max-width:400px){.emp-grid{grid-template-columns:1fr 1fr}.header{justify-content:center}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left"><h1>⏱ Time Clock</h1></div>
+  <div class="header-clock"><div class="time" id="hdr-time"></div><div class="date" id="hdr-date"></div></div>
+  <div class="header-right">
+    <button class="btn-s active" id="tab-emp" onclick="showView('employee')">Clock In/Out</button>
+    <button class="btn-s" id="tab-mgr" onclick="showView('manager')">Manager</button>
+  </div>
+</div>
+<div class="main">
+  <!-- EMPLOYEE VIEW -->
+  <div class="view active" id="view-employee">
+    <div class="status-bar status-none" id="status-bar">Select your name to clock in or out</div>
+    <div class="emp-grid" id="emp-grid"></div>
+    <div class="action-area">
+      <button class="action-btn ci" id="btn-in" disabled onclick="clockAction('clock_in')">☀ Clock In</button>
+      <button class="action-btn co" id="btn-out" disabled onclick="clockAction('clock_out')">🌙 Clock Out</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="panel"><h3>Today's Activity</h3><ul class="log-list" id="activity-log"></ul></div>
+  </div>
+
+  <!-- MANAGER VIEW -->
+  <div class="view" id="view-manager">
+    <div class="mgr-login" id="mgr-login">
+      <h2 style="margin-bottom:6px;font-size:1.1rem">Manager Access</h2>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:20px">Password required to view attendance data</p>
+      <input type="password" id="mgr-pw" placeholder="Enter password" autocomplete="off"/>
+      <div class="error" id="mgr-error">Incorrect password</div>
+      <br><button class="mgr-btn" onclick="mgrLogin()">Sign In</button>
+    </div>
+    <div id="mgr-dashboard" style="display:none">
+      <div id="late-alerts"></div>
+      <div class="stat-row" id="mgr-stats"></div>
+      <div class="panel"><h3>Employee Status</h3>
+        <table class="mgr-table"><thead><tr><th>Employee</th><th>Status</th><th>Since</th><th>Expected</th></tr></thead><tbody id="mgr-table-body"></tbody></table>
+      </div>
+      <div class="panel"><h3>Late Log (Today)</h3><ul class="log-list" id="late-log"></ul></div>
+      <div class="panel" id="contacts-panel">
+        <h3>Employee Contacts (for reminders)</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Add emails to enable shift reminders. Phone numbers for future SMS.</p>
+        <table class="contact-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>PIN</th></tr></thead><tbody id="contacts-body"></tbody></table>
+        <button class="save-btn" onclick="saveContacts()">Save Contacts</button>
+        <span id="contacts-saved" style="font-size:.78rem;color:var(--green);margin-left:8px;display:none">✓ Saved</span>
+      </div>
+      <div class="panel"><h3>All Activity</h3><ul class="log-list" id="mgr-activity"></ul></div>
+    </div>
+  </div>
+</div>
+
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <h3 id="pin-title">Enter PIN</h3>
+    <div class="pin-sub" id="pin-sub"></div>
+    <div class="pin-display"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key pin-cancel" onclick="pinCancel()">Cancel</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key pin-del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="pin-error-msg" id="pin-error"></div>
+  </div>
+</div>
+
+<nav class="nav-footer">
+  <span class="nav-link current">⏱ Time Clock</span>
+  <a class="nav-link" href="index.html">📅 Schedule (Manager)</a>
+  <a class="nav-link" href="timeclock-qr.html">📱 QR Code Setup</a>
+</nav>
+
+<script>
+const SB='https://veclqpzwkpvwmqjoyrax.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlY2xxcHp3a3B2d21xam95cmF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NjYyMzUsImV4cCI6MjEwMTM0MjIzNX0.oKU_7nITkWme6x5NyZyY7_nHfQGJ2ptMwZwP2VokZHA';
+const MGR_PW='VNNC3001';
+const EMPS=['Argene','James','Cjarra','Mara','Jose','William','Jaslyn','Key','DaVaun','Angela','Tuason','Hayes','Pat'];
+let selectedEmp=null,empStatuses={},todayRows=[],expectedShifts=[],mgrAuthed=false,contacts=[];
+let pinBuffer='',pendingAction=null,pinMap={};
+
+async function sb_api(path,opts={}){
+  const res=await fetch(SB+'/rest/v1/'+path,{headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':opts.prefer||''},method:opts.method||'GET',body:opts.body?JSON.stringify(opts.body):undefined});
+  if(!res.ok)throw new Error(await res.text());const t=await res.text();return t?JSON.parse(t):null;
+}
+
+function tick(){const n=new Date();document.getElementById('hdr-time').textContent=n.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});document.getElementById('hdr-date').textContent=n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});}
+tick();setInterval(tick,1000);
+
+function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));document.getElementById('view-'+v).classList.add('active');document.getElementById('tab-emp').classList.toggle('active',v==='employee');document.getElementById('tab-mgr').classList.toggle('active',v==='manager');if(v==='manager'&&mgrAuthed)renderMgr();}
+
+async function loadToday(){
+  const s=new Date();s.setHours(0,0,0,0);
+  try{todayRows=await sb_api(`timeclock?timestamp=gte.${s.toISOString()}&order=timestamp.desc`)||[];empStatuses={};todayRows.forEach(r=>{if(!empStatuses[r.employee_name])empStatuses[r.employee_name]={action:r.action,timestamp:r.timestamp};});renderEmpGrid();renderActivity();if(mgrAuthed)renderMgr();}catch(e){console.error(e);}
+}
+async function loadExpected(){const dow=new Date().getDay();const dbDow=dow===0?6:dow-1;try{expectedShifts=await sb_api(`expected_shifts?day_of_week=eq.${dbDow}&active=eq.true`)||[];}catch(e){}}
+async function loadContacts(){try{contacts=await sb_api('employee_contacts?order=employee_name.asc')||[];pinMap={};contacts.forEach(c=>{if(c.pin)pinMap[c.employee_name]=c.pin;});}catch(e){}}
+
+// ═══ EMPLOYEE VIEW ═══
+function renderEmpGrid(){
+  document.getElementById('emp-grid').innerHTML=EMPS.map(n=>{const s=empStatuses[n];const i=s&&s.action==='clock_in';return`<button class="emp-btn ${selectedEmp===n?'selected':''}" onclick="selectEmp('${n}')">${n}<span class="emp-st ${i?'in':''}">${i?'Clocked in':''}</span></button>`;}).join('');
+  updateBtns();
+}
+function selectEmp(n){selectedEmp=n;renderEmpGrid();const s=empStatuses[n],bar=document.getElementById('status-bar');if(s&&s.action==='clock_in'){bar.className='status-bar status-in';bar.textContent=`${n} — In since ${new Date(s.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;}else{bar.className='status-bar status-out';bar.textContent=`${n} — Not clocked in`;}}
+function updateBtns(){const i=document.getElementById('btn-in'),o=document.getElementById('btn-out');if(!selectedEmp){i.disabled=o.disabled=true;return;}const s=empStatuses[selectedEmp],isIn=s&&s.action==='clock_in';i.disabled=isIn;o.disabled=!isIn;}
+async function clockAction(a){
+  if(!selectedEmp)return;
+  // Show PIN pad
+  pendingAction=a;pinBuffer='';
+  document.getElementById('pin-title').textContent='Enter PIN';
+  document.getElementById('pin-sub').textContent=selectedEmp+' · '+(a==='clock_in'?'Clock In':'Clock Out');
+  document.getElementById('pin-error').textContent='';
+  updatePinDots();
+  document.getElementById('pin-overlay').classList.add('active');
+}
+
+function pinKey(n){
+  if(pinBuffer.length>=4)return;
+  pinBuffer+=n;updatePinDots();
+  if(pinBuffer.length===4)setTimeout(verifyPin,200);
+}
+function pinDel(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('pin-error').textContent='';}
+function pinCancel(){document.getElementById('pin-overlay').classList.remove('active');pendingAction=null;pinBuffer='';}
+function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);d.className='pin-dot'+(i<pinBuffer.length?' filled':'');}}
+
+async function verifyPin(){
+  const expected=pinMap[selectedEmp];
+  if(!expected){
+    // No PIN set — warn but allow (management needs to set PINs)
+    document.getElementById('pin-error').textContent='No PIN set. Contact manager.';
+    for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.add('error');
+    setTimeout(()=>{pinBuffer='';updatePinDots();},800);
+    return;
+  }
+  if(pinBuffer!==expected){
+    document.getElementById('pin-error').textContent='Incorrect PIN';
+    for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.add('error');
+    setTimeout(()=>{pinBuffer='';updatePinDots();document.getElementById('pin-error').textContent='';},800);
+    return;
+  }
+  // PIN correct — process the clock action
+  document.getElementById('pin-overlay').classList.remove('active');
+  const a=pendingAction;pendingAction=null;pinBuffer='';
+  const btn=document.getElementById(a==='clock_in'?'btn-in':'btn-out');
+  btn.disabled=true;btn.textContent='...';
+  try{
+    await sb_api('timeclock',{method:'POST',prefer:'return=minimal',body:{employee_name:selectedEmp,action:a}});
+    empStatuses[selectedEmp]={action:a,timestamp:new Date().toISOString()};
+    const fb=document.getElementById('feedback'),t=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    fb.className='feedback show';fb.style.background=a==='clock_in'?'var(--green-bg)':'var(--red-bg)';fb.style.color=a==='clock_in'?'var(--green)':'var(--red)';
+    fb.textContent=`✓ ${selectedEmp} ${a==='clock_in'?'clocked in':'clocked out'} at ${t}`;
+    setTimeout(()=>{fb.className='feedback';},4000);
+    selectEmp(selectedEmp);renderEmpGrid();loadToday();
+  }catch(e){alert('Error: '+e.message);}
+  btn.textContent=a==='clock_in'?'☀ Clock In':'🌙 Clock Out';
+}
+function renderActivity(){const el=document.getElementById('activity-log');if(!todayRows.length){el.innerHTML='<li style="color:var(--muted)">No activity today</li>';return;}el.innerHTML=todayRows.slice(0,15).map(r=>`<li><span><strong>${r.employee_name}</strong> · ${new Date(r.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span><span class="tag ${r.action==='clock_in'?'tag-in':'tag-out'}">${r.action==='clock_in'?'IN':'OUT'}</span></li>`).join('');}
+
+// ═══ MANAGER VIEW ═══
+function mgrLogin(){if(document.getElementById('mgr-pw').value===MGR_PW){mgrAuthed=true;document.getElementById('mgr-login').style.display='none';document.getElementById('mgr-dashboard').style.display='block';loadContacts().then(()=>renderMgr());}else{document.getElementById('mgr-error').style.display='block';document.getElementById('mgr-pw').value='';}}
+document.getElementById('mgr-pw').addEventListener('keydown',e=>{if(e.key==='Enter')mgrLogin();});
+
+function renderMgr(){
+  const clockedIn=EMPS.filter(n=>{const s=empStatuses[n];return s&&s.action==='clock_in';});
+  document.getElementById('mgr-stats').innerHTML=`<div class="stat-box"><div class="stat-val" style="color:var(--green)">${clockedIn.length}</div><div class="stat-label">Clocked In</div></div><div class="stat-box"><div class="stat-val" style="color:var(--red)">${EMPS.length-clockedIn.length}</div><div class="stat-label">Not In</div></div><div class="stat-box"><div class="stat-val">${EMPS.length}</div><div class="stat-label">Total</div></div>`;
+  document.getElementById('mgr-table-body').innerHTML=EMPS.map(n=>{const s=empStatuses[n];const isIn=s&&s.action==='clock_in';const since=isIn?new Date(s.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—';const exp=expectedShifts.filter(e=>e.employee_name===n);const expStr=exp.length?exp.map(e=>fmtT(e.shift_start)+'–'+fmtT(e.shift_end)).join(', '):'Off';const isLate=!isIn&&exp.some(e=>isShiftLate(e,15));return`<tr><td><span class="dot ${isIn?'dot-in':(isLate?'dot-late':'dot-out')}"></span>${n}</td><td>${isIn?'In':(isLate?'Late':'Out')}</td><td>${since}</td><td style="font-size:.82rem">${expStr}</td></tr>`;}).join('');
+  renderLateAlerts();loadLateLog();renderContacts();
+  document.getElementById('mgr-activity').innerHTML=todayRows.slice(0,30).map(r=>`<li><span><strong>${r.employee_name}</strong> · ${new Date(r.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span><span class="tag ${r.action==='clock_in'?'tag-in':'tag-out'}">${r.action==='clock_in'?'IN':'OUT'}</span></li>`).join('')||'<li style="color:var(--muted)">No activity</li>';
+}
+
+// ═══ CONTACTS ═══
+function renderContacts(){
+  document.getElementById('contacts-body').innerHTML=contacts.map(c=>`<tr><td style="font-weight:600">${c.employee_name}</td><td><input type="email" data-name="${c.employee_name}" data-field="email" value="${c.email||''}" placeholder="email@example.com"/></td><td><input type="tel" data-name="${c.employee_name}" data-field="phone" value="${c.phone||''}" placeholder="(202) 555-1234"/></td><td><input type="text" data-name="${c.employee_name}" data-field="pin" value="${c.pin||''}" placeholder="4 digits" maxlength="4" style="width:70px;text-align:center"/></td></tr>`).join('');
+}
+async function saveContacts(){
+  const inputs=document.querySelectorAll('#contacts-body input');
+  const updates={};
+  inputs.forEach(inp=>{const n=inp.dataset.name,f=inp.dataset.field;if(!updates[n])updates[n]={};updates[n][f]=inp.value.trim()||null;});
+  try{
+    for(const [name,data] of Object.entries(updates)){
+      await sb_api(`employee_contacts?employee_name=eq.${encodeURIComponent(name)}`,{method:'PATCH',prefer:'return=minimal',body:data});
+    }
+    const msg=document.getElementById('contacts-saved');msg.style.display='inline';setTimeout(()=>{msg.style.display='none';},3000);
+    await loadContacts();
+  }catch(e){alert('Error saving: '+e.message);}
+}
+
+// ═══ LATE DETECTION ═══
+function isShiftLate(es,mins){const now=new Date();const[h,m]=es.shift_start.split(':').map(Number);const ss=new Date();ss.setHours(h,m,0,0);if(h>=22&&now.getHours()<12)return false;return(now-ss)/(1000*60)>=mins;}
+function getMinsLate(es){const now=new Date();const[h,m]=es.shift_start.split(':').map(Number);const ss=new Date();ss.setHours(h,m,0,0);return Math.floor((now-ss)/(1000*60));}
+
+async function checkLate(){
+  if(!expectedShifts.length)return;
+  const todayStr=new Date().toISOString().split('T')[0];
+  for(const es of expectedShifts){
+    const s=empStatuses[es.employee_name];if(s&&s.action==='clock_in')continue;
+    const mins=getMinsLate(es);if(mins<15)continue;
+    const sev=mins>=30?'escalated':'warning';
+    try{
+      const ex=await sb_api(`late_notices?employee_name=eq.${encodeURIComponent(es.employee_name)}&shift_date=eq.${todayStr}&shift_start=eq.${encodeURIComponent(es.shift_start)}&severity=eq.${sev}`);
+      if(ex&&ex.length>0)continue;
+      await sb_api('late_notices',{method:'POST',prefer:'return=minimal',body:{employee_name:es.employee_name,shift_date:todayStr,shift_start:es.shift_start,department:es.department,minutes_late:mins,severity:sev}});
+    }catch(e){}
+  }
+}
+
+function renderLateAlerts(){
+  const el=document.getElementById('late-alerts');const late=[];
+  expectedShifts.forEach(es=>{const s=empStatuses[es.employee_name];if(!(s&&s.action==='clock_in')){const m=getMinsLate(es);if(m>=15)late.push({name:es.employee_name,mins:m,shift:es.shift_start,dept:es.department,esc:m>=30});}});
+  if(!late.length){el.innerHTML='';return;}
+  el.innerHTML=late.map(l=>`<div class="late-card ${l.esc?'escalated':''}"><div class="late-info"><div class="late-name">${l.esc?'🚨':'⚠'} ${l.name}</div><div class="late-detail">${l.mins}min late · Shift: ${fmtT(l.shift)} · ${l.dept==='bldg'?'Building':'Pkg Room'}</div></div><span class="late-severity ${l.esc?'late-esc':'late-warn'}">${l.esc?'ESCALATED':'WARNING'}</span></div>`).join('');
+}
+
+async function loadLateLog(){
+  const d=new Date().toISOString().split('T')[0];
+  try{const n=await sb_api(`late_notices?shift_date=eq.${d}&order=created_at.desc`)||[];const el=document.getElementById('late-log');if(!n.length){el.innerHTML='<li style="color:var(--muted)">No late notices</li>';return;}el.innerHTML=n.map(r=>`<li><span><strong>${r.employee_name}</strong> · ${r.minutes_late}min late · ${fmtT(r.shift_start)} · ${new Date(r.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span><span class="tag" style="background:${r.severity==='escalated'?'var(--red-bg);color:var(--red)':'var(--warning-bg);color:var(--warning)'}">${r.severity==='escalated'?'ESCALATED':'WARNING'}</span></li>`).join('');}catch(e){}
+}
+
+// ═══ REMINDER TRIGGER ═══
+async function triggerReminders(){
+  try{await fetch(SB+'/functions/v1/send-reminders',{method:'POST',headers:{'Authorization':'Bearer '+KEY}});}catch(e){}
+}
+
+function fmtT(t){const[h,m]=t.split(':').map(Number);const ap=h>=12?'p':'a';const hr=h>12?h-12:(h===0?12:h);return m>0?`${hr}:${String(m).padStart(2,'0')}${ap}`:`${hr}${ap}`;}
+
+async function init(){await loadExpected();await loadContacts();await loadToday();renderEmpGrid();triggerReminders();}
+init();
+setInterval(loadToday,30000);
+setInterval(async()=>{await checkLate();if(mgrAuthed)renderMgr();triggerReminders();},60000);
+</script>
+</body>
+</html>
