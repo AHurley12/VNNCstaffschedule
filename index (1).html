@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Schedule</title>
+<style>
+  :root {
+    --bg:#F5F4F1;--surface:#FFF;--border:#D4D0C8;--text:#2C2C2C;--text-muted:#7A7A7A;
+    --accent:#3D5A80;--accent-light:#E8EDF2;--accent-hover:#2C4A6E;
+    --danger:#C1504D;--danger-bg:#FFF0F0;--success:#4A7C59;--success-bg:#F0F8F2;
+    --warning:#B8860B;--warning-bg:#FFF8E7;
+    --callout:#E85D3A;--callout-bg:#FFF1EC;
+    --dept-bldg:#3D5A80;--dept-bldg-bg:#EDF1F7;--dept-bldg-chip:#D6E0ED;
+    --dept-pkg:#7B6D8D;--dept-pkg-bg:#F1EDF5;--dept-pkg-chip:#E0D6EC;
+    --radius:6px;--shadow:0 1px 3px rgba(0,0,0,.08);
+    --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+  #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;max-width:380px;width:100%;box-shadow:var(--shadow);text-align:center}
+  .login-box h1{font-size:1.3rem;font-weight:600;margin-bottom:6px}
+  .login-box p{font-size:.85rem;color:var(--text-muted);margin-bottom:24px}
+  .login-box input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;margin-bottom:12px;outline:none}
+  .login-box input:focus{border-color:var(--accent)}
+  .login-box .error{color:var(--danger);font-size:.8rem;margin-bottom:10px;display:none}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:.85rem;cursor:pointer;font-family:var(--font)}
+  .btn:hover{background:var(--bg)}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn-callout{background:var(--callout);color:#fff;border-color:var(--callout)}
+  .btn-sm{padding:5px 10px;font-size:.8rem}
+  .btn-xs{padding:3px 7px;font-size:.72rem}
+  .btn-block{width:100%;justify-content:center}
+  #app{display:none}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .topbar h1{font-size:1.1rem;font-weight:600}
+  .topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .main{padding:24px;max-width:1400px;margin:0 auto}
+  .tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)}
+  .tab{padding:10px 20px;font-size:.85rem;cursor:pointer;color:var(--text-muted);border:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;font-family:var(--font)}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .tab-badge{background:var(--callout);color:#fff;font-size:.65rem;padding:1px 6px;border-radius:8px;margin-left:4px;font-weight:700}
+  .week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  .week-nav h2{font-size:1rem;font-weight:600}
+  .dept-filters{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+  .dept-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;cursor:pointer;border:2px solid;font-family:var(--font)}
+  .dept-toggle.active{color:#fff}
+  .dept-filter-label{font-size:.78rem;color:var(--text-muted);margin-right:4px}
+  .schedule-grid{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto;box-shadow:var(--shadow)}
+  .schedule-table{width:100%;border-collapse:collapse;min-width:900px}
+  .schedule-table th{padding:10px 12px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:2px solid var(--border);text-align:left;background:var(--bg);position:sticky;top:0;z-index:2}
+  .schedule-table th.today-col{color:var(--accent);border-bottom-color:var(--accent)}
+  .schedule-table td{padding:6px 8px;border-bottom:1px solid #EEECE6;vertical-align:top;min-width:120px}
+  .schedule-table td:first-child{font-weight:600;font-size:.82rem;white-space:nowrap;background:var(--bg);position:sticky;left:0;z-index:1;border-right:1px solid var(--border);min-width:150px}
+  .dept-header-row td{padding:0!important;border-bottom:none!important}
+  .dept-header{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;user-select:none}
+  .dept-header .arrow{transition:transform .2s;font-size:.65rem}
+  .dept-header .arrow.collapsed{transform:rotate(-90deg)}
+  .dept-header .dept-badge{padding:2px 8px;border-radius:10px;font-size:.7rem;color:#fff;font-weight:600}
+  .coverage-row td{padding:4px 8px!important;border-bottom:2px solid var(--border)!important}
+  .coverage-cell{font-size:.72rem;font-weight:600;padding:3px 8px;border-radius:3px;display:inline-block}
+  .coverage-ok{background:var(--success-bg);color:var(--success)}
+  .coverage-danger{background:var(--danger-bg);color:var(--danger);animation:pulse 1.5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  .shift-chip{display:flex;align-items:flex-start;gap:4px;padding:4px 8px;border-radius:4px;font-size:.76rem;margin:2px 0;position:relative;max-width:100%;word-break:break-word;line-height:1.3}
+  .shift-chip .shift-actions{display:none;margin-left:auto;flex-shrink:0;gap:2px}
+  .shift-chip:hover .shift-actions{display:flex}
+  .shift-chip .act-btn{cursor:pointer;font-size:.65rem;padding:0 2px;border:none;background:none;font-family:var(--font)}
+  .shift-chip.conflict{outline:2px solid var(--danger);outline-offset:-1px}
+  .shift-chip.callout-shift{background:var(--callout-bg)!important;border:1.5px dashed var(--callout);opacity:.85}
+  .shift-chip.callout-shift .shift-label{text-decoration:line-through;color:var(--text-muted)}
+  .shift-chip.vacation-shift{background:#E8F4FD!important;border:1.5px dashed #5BA3D9}
+  .add-shift-btn{display:inline-block;font-size:.72rem;color:var(--text-muted);cursor:pointer;padding:2px 6px;border-radius:3px;margin-top:2px}
+  .add-shift-btn:hover{background:var(--accent-light);color:var(--accent)}
+  .emp-cell-dept-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .emp-hrs{font-size:.68rem;color:var(--text-muted);font-weight:400;display:block;margin-top:1px}
+  .emp-hrs.near-cap{color:var(--warning);font-weight:600}
+  .emp-hrs.at-cap{color:var(--danger);font-weight:600}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.active{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius);padding:28px;max-width:500px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15);max-height:85vh;overflow-y:auto}
+  .modal h3{font-size:1rem;margin-bottom:16px}
+  .modal label{display:block;font-size:.8rem;font-weight:600;margin-bottom:4px;color:var(--text-muted)}
+  .modal input,.modal select,.modal textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:.9rem;margin-bottom:14px;font-family:var(--font);outline:none}
+  .modal input:focus,.modal select:focus{border-color:var(--accent)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+  .cover-list{list-style:none}
+  .cover-list li{display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid #eee;gap:8px}
+  .cover-list li:last-child{border-bottom:none}
+  .cover-status{font-size:.72rem;padding:2px 8px;border-radius:8px;font-weight:600}
+  .cover-free{background:var(--success-bg);color:var(--success)}
+  .cover-busy{background:var(--warning-bg);color:var(--warning)}
+  .cover-capped{background:var(--danger-bg);color:var(--danger)}
+  .cover-phone{font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600}
+  .cover-phone:hover{text-decoration:underline}
+  .cover-name{font-weight:600;font-size:.88rem}
+  .cover-detail{font-size:.75rem;color:var(--text-muted)}
+  .hrs-bar{height:6px;border-radius:3px;background:#eee;margin-top:4px;overflow:hidden;width:100px}
+  .hrs-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+  .callout-log{list-style:none}
+  .callout-log li{padding:10px 12px;border-bottom:1px solid #eee;display:flex;align-items:flex-start;gap:10px}
+  .callout-log li:last-child{border-bottom:none}
+  .callout-resolved{opacity:.5}
+  .callout-info strong{font-size:.88rem}
+  .callout-info .callout-meta{font-size:.75rem;color:var(--text-muted);margin-top:2px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:24px;box-shadow:var(--shadow)}
+  .panel:first-child{margin-top:0}
+  .panel h3{font-size:.95rem;margin-bottom:14px}
+  .emp-list{list-style:none}
+  .emp-list li{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #EEECE6;font-size:.88rem;gap:8px}
+  .emp-list li:last-child{border-bottom:none}
+  .emp-dept-badges{display:flex;gap:4px;margin-left:6px}
+  .emp-dept-badge{font-size:.65rem;padding:1px 6px;border-radius:8px;color:#fff;font-weight:600}
+  .emp-phone{font-size:.78rem;color:var(--text-muted)}
+  .emp-li-actions{display:flex;gap:4px;flex-shrink:0}
+  .setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #EEECE6;gap:12px}
+  .setting-row:last-child{border-bottom:none}
+  .setting-label{font-size:.88rem}
+  .setting-desc{font-size:.78rem;color:var(--text-muted)}
+  .setting-input{width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;text-align:center;font-family:var(--font)}
+  .legend{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:.73rem;color:var(--text-muted)}
+  .legend-swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.1)}
+  .vac-preview{list-style:none;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px}
+  .vac-preview li{padding:6px 10px;font-size:.82rem;border-bottom:1px solid #eee;display:flex;justify-content:space-between}
+  .vac-preview li:last-child{border-bottom:none}
+  .vac-preview .vac-ok{color:var(--success)}
+  .vac-preview .vac-fail{color:var(--danger)}
+  .rel-badge{font-size:.62rem;padding:1px 5px;border-radius:6px;font-weight:700;display:inline-block;vertical-align:middle;margin-left:4px}
+  .rel-high{background:var(--success-bg);color:var(--success)}
+  .rel-med{background:var(--warning-bg);color:var(--warning)}
+  .rel-low{background:var(--danger-bg);color:var(--danger)}
+  .rel-bar{height:4px;border-radius:2px;background:#eee;width:50px;display:inline-block;vertical-align:middle;margin-left:4px;overflow:hidden}
+  .rel-bar-fill{height:100%;border-radius:2px}
+  .rel-caution{font-size:.68rem;color:var(--danger);font-weight:600}
+  .clock{font-size:.82rem;color:var(--text-muted);font-weight:500;letter-spacing:.3px;font-variant-numeric:tabular-nums}
+  .ts-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  .ts-table th{text-align:left;padding:8px 10px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg)}
+  .ts-table td{padding:8px 10px;border-bottom:1px solid #EEECE6}
+  .ts-in{color:var(--success);font-weight:600}
+  .ts-out{color:var(--danger);font-weight:600}
+  .ts-total{font-weight:700}
+  .ts-diff{font-size:.72rem;padding:2px 6px;border-radius:4px;font-weight:600}
+  .ts-diff-ok{background:var(--success-bg);color:var(--success)}
+  .ts-diff-late{background:var(--warning-bg);color:var(--warning)}
+  .ts-diff-miss{background:var(--danger-bg);color:var(--danger)}
+  .ts-summary{display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap}
+  .ts-stat{background:var(--bg);padding:10px 16px;border-radius:var(--radius);text-align:center}
+  .ts-stat-val{font-size:1.3rem;font-weight:700}
+  .ts-stat-label{font-size:.72rem;color:var(--text-muted)}
+  .clock-time{font-size:1rem;font-weight:600;color:var(--text)}
+  .clock-date{font-size:.72rem;color:var(--text-muted)}
+  .topbar-center{display:flex;flex-direction:column;align-items:center;line-height:1.3}
+  .nav-disabled{opacity:.35;pointer-events:none}
+  .week-limit-note{font-size:.7rem;color:var(--text-muted);font-style:italic}
+  @media print{.topbar-actions,.add-shift-btn,.shift-actions,.tabs,#tab-employees,#tab-settings,#tab-callouts,.dept-filters,.week-nav .btn,.legend,.clock{display:none!important}body{background:#fff}.main{padding:10px}.schedule-table{min-width:auto}}
+  @media(max-width:600px){.topbar{padding:10px 14px;flex-wrap:wrap;gap:8px}.main{padding:14px}}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-box"><h1>Staff Schedule</h1><p>Management access only</p>
+  <input type="password" id="login-pw" placeholder="Enter password" autocomplete="off"/>
+  <div class="error" id="login-error">Incorrect password</div>
+  <button class="btn btn-primary btn-block" onclick="attemptLogin()">Sign In</button>
+  <p style="margin-top:16px;font-size:.75rem;color:var(--text-muted)">Password required. Contact management.</p></div>
+</div>
+<div id="app">
+  <div class="topbar"><h1>Staff Schedule</h1>
+    <div class="topbar-center clock">
+      <span class="clock-time" id="clock-time"></span>
+      <span class="clock-date" id="clock-date"></span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-sm" style="background:#5BA3D9;color:#fff;border-color:#5BA3D9" onclick="openVacation()">🏖 Vacation</button>
+      <button class="btn btn-sm" onclick="window.print()">🖨</button>
+      <button class="btn btn-sm" onclick="exportData()">⬇ Backup</button>
+      <button class="btn btn-sm" onclick="document.getElementById('import-file').click()">⬆ Restore</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-sm btn-danger" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('schedule',this)">Schedule</button>
+      <button class="tab" onclick="switchTab('callouts',this)" id="tab-callouts-btn">Callouts <span class="tab-badge" id="callout-badge" style="display:none">0</span></button>
+      <button class="tab" onclick="switchTab('employees',this)">Employees</button>
+      <button class="tab" onclick="switchTab('timesheets',this)">Timesheets</button>
+      <button class="tab" onclick="switchTab('settings',this)">Settings</button>
+    </div>
+    <div class="tab-content active" id="tab-schedule">
+      <div class="week-nav">
+        <div style="display:flex;gap:6px;align-items:center"><button class="btn btn-sm" id="nav-prev" onclick="changeWeek(-1)">◀ Prev</button><button class="btn btn-sm" onclick="goToday()">Today</button><button class="btn btn-sm" id="nav-next" onclick="changeWeek(1)">Next ▶</button><span class="week-limit-note" id="nav-limit-note" style="display:none"></span></div>
+        <h2 id="week-label"></h2>
+      </div>
+      <div class="dept-filters" id="dept-filters"></div>
+      <div class="legend" id="legend"></div>
+      <div class="schedule-grid"><table class="schedule-table"><thead><tr id="schedule-header"></tr></thead><tbody id="schedule-body"></tbody></table></div>
+    </div>
+    <div class="tab-content" id="tab-callouts">
+      <div class="panel" style="margin-top:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3>Callout Log</h3><button class="btn btn-sm" onclick="clearResolvedCallouts()">Clear Resolved</button></div>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px">Mark a shift ⊘ on the schedule to log a callout and find cover.</p>
+        <ul class="callout-log" id="callout-log"></ul>
+        <p id="callout-empty" style="font-size:.85rem;color:var(--text-muted);padding:20px 0;text-align:center;display:none">No callouts. Good day.</p>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-employees">
+      <div class="panel" style="margin-top:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3>Employee Roster</h3><button class="btn btn-primary btn-sm" onclick="openAddEmployee()">+ Add</button></div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Add phone numbers for Find Cover contacts.</p>
+        <ul class="emp-list" id="emp-list"></ul>
+        <p id="emp-empty" style="font-size:.85rem;color:var(--text-muted);padding:20px 0;text-align:center;display:none">No employees.</p>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-timesheets">
+      <div class="panel" style="margin-top:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <h3>Timesheets</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <label style="font-size:.78rem;color:var(--text-muted)">Date:</label>
+            <input type="date" id="ts-date" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;font-family:var(--font)" onchange="loadTimesheets()"/>
+            <button class="btn btn-sm" onclick="setTsToday()">Today</button>
+          </div>
+        </div>
+        <div id="ts-content"><p style="color:var(--text-muted);text-align:center;padding:20px">Select a date to view timesheets.</p></div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-settings">
+      <div class="panel" style="margin-top:0"><h3>Settings</h3>
+        <div class="setting-row"><div><div class="setting-label">Change Password</div><div class="setting-desc">Update management login</div></div><button class="btn btn-sm" onclick="openChangePassword()">Change</button></div>
+        <div class="setting-row"><div><div class="setting-label">Max Weekly Hours</div><div class="setting-desc">Cover algorithm won't push anyone past this</div></div><input type="number" class="setting-input" id="max-hours-input" min="20" max="60" value="40" onchange="updateMaxHours(this.value)"/></div>
+        <div id="coverage-settings"></div>
+        <div class="setting-row"><div><div class="setting-label">Clear All Data</div><div class="setting-desc">Remove everything permanently</div></div><button class="btn btn-sm btn-danger" onclick="clearAllData()">Clear</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-shift"><div class="modal"><h3>Add Shift</h3>
+  <input type="hidden" id="shift-emp"/><input type="hidden" id="shift-date"/><input type="hidden" id="shift-dept"/>
+  <label>Shift Type</label>
+  <select id="shift-type" onchange="toggleCustomTime()">
+    <option value="7a–3p">Morning (7a–3p)</option><option value="3p–11p">Afternoon (3p–11p)</option>
+    <option value="11p–7a">Overnight (11p–7a)</option><option value="8a–12p">Half AM (8a–12p)</option>
+    <option value="12p–8p">Half PM (12p–8p)</option><option value="custom">Custom...</option>
+  </select>
+  <div id="custom-time-fields" style="display:none"><label>Start</label><input type="time" id="shift-start"/><label>End</label><input type="time" id="shift-end"/></div>
+  <label>Note (optional)</label><input type="text" id="shift-note" placeholder="e.g. lobby, cover for James"/>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('modal-shift')">Cancel</button><button class="btn btn-primary" onclick="saveShift()">Add</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-employee"><div class="modal"><h3 id="emp-modal-title">Add Employee</h3>
+  <label>Name</label><input type="text" id="emp-name" placeholder="Full name"/>
+  <label>Role</label><input type="text" id="emp-role" placeholder="e.g. Doorman, Porter"/>
+  <label>Phone</label><input type="tel" id="emp-phone" placeholder="(202) 555-1234"/>
+  <label>Department(s)</label><div style="display:flex;gap:10px;margin-bottom:14px" id="emp-dept-checks"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('modal-employee')">Cancel</button><button class="btn btn-primary" onclick="saveEmployee()">Save</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-password"><div class="modal"><h3>Change Password</h3>
+  <label>Current</label><input type="password" id="pw-current"/>
+  <label>New</label><input type="password" id="pw-new"/>
+  <label>Confirm</label><input type="password" id="pw-confirm"/>
+  <div id="pw-error" style="color:var(--danger);font-size:.8rem;margin-bottom:8px;display:none"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('modal-password')">Cancel</button><button class="btn btn-primary" onclick="changePassword()">Update</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-cover"><div class="modal"><h3 id="cover-title">Find Cover</h3>
+  <p id="cover-subtitle" style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px"></p>
+  <ul class="cover-list" id="cover-list"></ul>
+  <div class="modal-actions" style="margin-top:16px"><button class="btn" onclick="closeModal('modal-cover')">Close</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-vacation"><div class="modal"><h3>🏖 Schedule Vacation</h3>
+  <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px">Select an employee and date range. The system auto-assigns cover shifts to available staff without pushing anyone over the weekly hour cap.</p>
+  <label>Employee</label>
+  <select id="vac-emp"></select>
+  <label>Start Date</label><input type="date" id="vac-start"/>
+  <label>End Date (inclusive)</label><input type="date" id="vac-end"/>
+  <div id="vac-preview-area" style="display:none">
+    <label>Coverage Preview</label>
+    <ul class="vac-preview" id="vac-preview"></ul>
+    <p id="vac-summary" style="font-size:.8rem;margin-bottom:10px"></p>
+  </div>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeModal('modal-vacation')">Cancel</button>
+    <button class="btn btn-sm" onclick="previewVacation()" id="vac-preview-btn">Preview Coverage</button>
+    <button class="btn btn-primary" onclick="confirmVacation()" id="vac-confirm-btn" style="display:none">Confirm & Assign</button>
+  </div>
+</div></div>
+
+<script>
+const STORAGE_KEY='coop_schedule_v4';
+const SEED_DATA={"password": "VNNC3001", "employees": [{"id": "e1", "name": "Argene", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e2", "name": "James", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e3", "name": "Cjarra", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e4", "name": "Mara", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e5", "name": "Jose", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e6", "name": "William", "role": "Bldg / Pkg Room", "depts": ["bldg", "pkg"], "phone": ""}, {"id": "e7", "name": "Jaslyn", "role": "Bldg / Pkg Room", "depts": ["bldg", "pkg"], "phone": ""}, {"id": "e8", "name": "Key", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e9", "name": "DaVaun", "role": "Building Assoc.", "depts": ["bldg"], "phone": ""}, {"id": "e10", "name": "Angela", "role": "Bldg / Pkg Room", "depts": ["bldg", "pkg"], "phone": ""}, {"id": "e11", "name": "Tuason", "role": "Bldg / Pkg Room", "depts": ["bldg", "pkg"], "phone": ""}, {"id": "e12", "name": "Hayes", "role": "Package Room", "depts": ["pkg"], "phone": ""}, {"id": "e13", "name": "Pat", "role": "Package Room", "depts": ["pkg"], "phone": ""}], "departments": [{"id": "bldg", "name": "Building Associates", "color": "#3D5A80", "minPerDay": 3}, {"id": "pkg", "name": "Package Room", "color": "#7B6D8D", "minPerDay": 2}], "shifts": {"2026-07-31": [{"id": "s1", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s2", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s3", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s4", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s5", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s6", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s7", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s8", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-01": [{"id": "s9", "empId": "e3", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s10", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s11", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s12", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s13", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-02": [{"id": "s14", "empId": "e6", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s15", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s16", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s17", "empId": "e10", "label": "4p\u20138p", "dept": "bldg", "note": "", "status": "active"}], "2026-08-03": [{"id": "s18", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s19", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s20", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s21", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s22", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s23", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s24", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s25", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-04": [{"id": "s26", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s27", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s28", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s29", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s30", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s31", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s32", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s33", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-05": [{"id": "s34", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s35", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s36", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s37", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s38", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s39", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s40", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s41", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-06": [{"id": "s42", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s43", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s44", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s45", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s46", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s47", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s48", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s49", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-07": [{"id": "s50", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s51", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s52", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s53", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s54", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s55", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s56", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s57", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-08": [{"id": "s58", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s59", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s60", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s61", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s62", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s63", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s64", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-09": [{"id": "s65", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s66", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s67", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s68", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s69", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s70", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s71", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-10": [{"id": "s72", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s73", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s74", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s75", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s76", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s77", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s78", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s79", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-11": [{"id": "s80", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s81", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s82", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s83", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s84", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s85", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s86", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s87", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-12": [{"id": "s88", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s89", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s90", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s91", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s92", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s93", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s94", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s95", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-13": [{"id": "s96", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s97", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s98", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s99", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s100", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s101", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s102", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s103", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-14": [{"id": "s104", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s105", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s106", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s107", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s108", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s109", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s110", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s111", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-15": [{"id": "s112", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s113", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s114", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s115", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s116", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s117", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s118", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-16": [{"id": "s119", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s120", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s121", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s122", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s123", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s124", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s125", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-17": [{"id": "s126", "empId": "e10", "label": "7a\u20133p", "dept": "bldg", "note": "covering Argene", "status": "active"}, {"id": "s127", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s128", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s129", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s130", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s131", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s132", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s133", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-18": [{"id": "s134", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s135", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s136", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s137", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s138", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s139", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s140", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s141", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-19": [{"id": "s142", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s143", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s144", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s145", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s146", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s147", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s148", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s149", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-20": [{"id": "s150", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s151", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s152", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s153", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s154", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s155", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s156", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s157", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-21": [{"id": "s158", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s159", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s160", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s161", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s162", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s163", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s164", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s165", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-22": [{"id": "s166", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s167", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s168", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s169", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s170", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s171", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s172", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-23": [{"id": "s173", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s174", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s175", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s176", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s177", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s178", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s179", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-24": [{"id": "s180", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s181", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s182", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s183", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s184", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s185", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s186", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s187", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-25": [{"id": "s188", "empId": "e1", "label": "1p\u20133p", "dept": "bldg", "note": "short shift", "status": "active"}, {"id": "s189", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s190", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s191", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s192", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s193", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s194", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s195", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-26": [{"id": "s196", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s197", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s198", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s199", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s200", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s201", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s202", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s203", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-27": [{"id": "s204", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s205", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s206", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s207", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s208", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s209", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s210", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s211", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-28": [{"id": "s212", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s213", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s214", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s215", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s216", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s217", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s218", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s219", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-29": [{"id": "s220", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s221", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s222", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s223", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s224", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s225", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s226", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-30": [{"id": "s227", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s228", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s229", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s230", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s231", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s232", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s233", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-08-31": [{"id": "s234", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s235", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s236", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-01": [{"id": "s237", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s238", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s239", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s240", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s241", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s242", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s243", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s244", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-02": [{"id": "s245", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s246", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s247", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s248", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s249", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s250", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s251", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s252", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-03": [{"id": "s253", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s254", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s255", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s256", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s257", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s258", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s259", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s260", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-04": [{"id": "s261", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s262", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s263", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s264", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s265", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s266", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s267", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s268", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-05": [{"id": "s269", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s270", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s271", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s272", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s273", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s274", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s275", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-06": [{"id": "s276", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s277", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s278", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s279", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s280", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s281", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s282", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-07": [{"id": "s283", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s284", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s285", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s286", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s287", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s288", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s289", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s290", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-08": [{"id": "s291", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s292", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s293", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s294", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s295", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s296", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s297", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s298", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-09": [{"id": "s299", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s300", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s301", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s302", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s303", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s304", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s305", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s306", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-10": [{"id": "s307", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s308", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s309", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s310", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s311", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s312", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s313", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s314", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-11": [{"id": "s315", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s316", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s317", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s318", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s319", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s320", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s321", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s322", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-12": [{"id": "s323", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s324", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s325", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s326", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s327", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s328", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s329", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-13": [{"id": "s330", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s331", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s332", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s333", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s334", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s335", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s336", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-14": [{"id": "s337", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s338", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s339", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s340", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s341", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s342", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s343", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s344", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-15": [{"id": "s345", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s346", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s347", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s348", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s349", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s350", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s351", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s352", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-16": [{"id": "s353", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s354", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s355", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s356", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s357", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s358", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s359", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s360", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-17": [{"id": "s361", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s362", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s363", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s364", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s365", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s366", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s367", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s368", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-18": [{"id": "s369", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s370", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s371", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s372", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s373", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s374", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s375", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s376", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-19": [{"id": "s377", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s378", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s379", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s380", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s381", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s382", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s383", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-20": [{"id": "s384", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s385", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s386", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s387", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s388", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s389", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s390", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-21": [{"id": "s391", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s392", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s393", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s394", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s395", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s396", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s397", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s398", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-22": [{"id": "s399", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s400", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s401", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s402", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s403", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s404", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s405", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s406", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-23": [{"id": "s407", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s408", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s409", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s410", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s411", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s412", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s413", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s414", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-24": [{"id": "s415", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s416", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s417", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s418", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s419", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s420", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s421", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s422", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-25": [{"id": "s423", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s424", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s425", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s426", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s427", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s428", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s429", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s430", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-26": [{"id": "s431", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s432", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s433", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s434", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s435", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s436", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s437", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-27": [{"id": "s438", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s439", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s440", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s441", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s442", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s443", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s444", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-28": [{"id": "s445", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s446", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s447", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s448", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s449", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s450", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s451", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s452", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-29": [{"id": "s453", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s454", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s455", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s456", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s457", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s458", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s459", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s460", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-09-30": [{"id": "s461", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s462", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s463", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s464", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s465", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s466", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s467", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s468", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-01": [{"id": "s469", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s470", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s471", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s472", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s473", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s474", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s475", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s476", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-02": [{"id": "s477", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s478", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s479", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s480", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s481", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s482", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s483", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s484", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-03": [{"id": "s485", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s486", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s487", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s488", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s489", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s490", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s491", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-04": [{"id": "s492", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s493", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s494", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s495", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s496", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s497", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s498", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-05": [{"id": "s499", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s500", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s501", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s502", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s503", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s504", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s505", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s506", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-06": [{"id": "s507", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s508", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s509", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s510", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s511", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s512", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s513", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s514", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-07": [{"id": "s515", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s516", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s517", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s518", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s519", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s520", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s521", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s522", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-08": [{"id": "s523", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s524", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s525", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s526", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s527", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s528", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s529", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s530", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-09": [{"id": "s531", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s532", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s533", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s534", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s535", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s536", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s537", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s538", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-10": [{"id": "s539", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s540", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s541", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s542", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s543", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s544", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s545", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-11": [{"id": "s546", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s547", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s548", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s549", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s550", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s551", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s552", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-12": [{"id": "s553", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s554", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s555", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s556", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s557", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s558", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s559", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s560", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-13": [{"id": "s561", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s562", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s563", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s564", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s565", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s566", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s567", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s568", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-14": [{"id": "s569", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s570", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s571", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s572", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s573", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s574", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s575", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s576", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-15": [{"id": "s577", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s578", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s579", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s580", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s581", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s582", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s583", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s584", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-16": [{"id": "s585", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s586", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s587", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s588", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s589", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s590", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s591", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s592", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-17": [{"id": "s593", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s594", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s595", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s596", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s597", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s598", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s599", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-18": [{"id": "s600", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s601", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s602", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s603", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s604", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s605", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s606", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-19": [{"id": "s607", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s608", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s609", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s610", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s611", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s612", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s613", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s614", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-20": [{"id": "s615", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s616", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s617", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s618", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s619", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s620", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s621", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s622", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-21": [{"id": "s623", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s624", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s625", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s626", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s627", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s628", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s629", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s630", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-22": [{"id": "s631", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s632", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s633", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s634", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s635", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s636", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s637", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s638", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-23": [{"id": "s639", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s640", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s641", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s642", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s643", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s644", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s645", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s646", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-24": [{"id": "s647", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s648", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s649", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s650", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s651", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s652", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s653", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-25": [{"id": "s654", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s655", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s656", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s657", "empId": "e10", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s658", "empId": "e11", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s659", "empId": "e11", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s660", "empId": "e7", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-26": [{"id": "s661", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s662", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s663", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s664", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s665", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s666", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s667", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s668", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-27": [{"id": "s669", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s670", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s671", "empId": "e3", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s672", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s673", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s674", "empId": "e11", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s675", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s676", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-28": [{"id": "s677", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s678", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s679", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s680", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s681", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s682", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s683", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s684", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-29": [{"id": "s685", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s686", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s687", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s688", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s689", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s690", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s691", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s692", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-30": [{"id": "s693", "empId": "e1", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s694", "empId": "e2", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s695", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s696", "empId": "e5", "label": "8a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s697", "empId": "e6", "label": "5p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s698", "empId": "e13", "label": "8a\u201312p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s699", "empId": "e12", "label": "12p\u20138p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s700", "empId": "e6", "label": "3p\u20135p", "dept": "pkg", "note": "", "status": "active"}], "2026-10-31": [{"id": "s701", "empId": "e7", "label": "7a\u20133p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s702", "empId": "e8", "label": "3p\u201311p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s703", "empId": "e4", "label": "11p\u20137a", "dept": "bldg", "note": "", "status": "active"}, {"id": "s704", "empId": "e3", "label": "10a\u20136p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s705", "empId": "e9", "label": "6p\u201310:30p", "dept": "bldg", "note": "", "status": "active"}, {"id": "s706", "empId": "e10", "label": "8a\u20132p", "dept": "pkg", "note": "", "status": "active"}, {"id": "s707", "empId": "e11", "label": "2p\u20138p", "dept": "pkg", "note": "", "status": "active"}]}, "callouts": [], "maxHours": 40};
+
+function loadData(){try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch(e){}return JSON.parse(JSON.stringify(SEED_DATA));}
+function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));}
+let DATA=loadData();
+if(!DATA.callouts)DATA.callouts=[];
+if(!DATA.maxHours)DATA.maxHours=40;
+let currentWeekStart=getMonday(new Date());
+let deptVisibility={},deptCollapsed={};
+DATA.departments.forEach(d=>{deptVisibility[d.id]=true;deptCollapsed[d.id]=false;});
+let vacPlan=null; // holds vacation preview assignments
+
+// ═══ AUTH ═══
+function attemptLogin(){if(document.getElementById('login-pw').value===DATA.password){sessionStorage.setItem('coop_auth','1');document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';renderAll();}else{document.getElementById('login-error').style.display='block';document.getElementById('login-pw').value='';}}
+document.getElementById('login-pw').addEventListener('keydown',e=>{if(e.key==='Enter')attemptLogin();});
+function logout(){sessionStorage.removeItem('coop_auth');document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';document.getElementById('login-pw').value='';document.getElementById('login-error').style.display='none';}
+if(sessionStorage.getItem('coop_auth')==='1'){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';setTimeout(renderAll,0);}
+
+// ═══ DATE HELPERS ═══
+function getMonday(d){const dt=new Date(d);const day=dt.getDay();dt.setDate(dt.getDate()-day+(day===0?-6:1));dt.setHours(0,0,0,0);return dt;}
+function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt;}
+function fmtDate(d){return d.toISOString().split('T')[0];}
+function fmtShort(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function fmtDay(d){return d.toLocaleDateString('en-US',{weekday:'short'});}
+function isToday(d){const t=new Date();t.setHours(0,0,0,0);const dd=new Date(d);dd.setHours(0,0,0,0);return t.getTime()===dd.getTime();}
+function fmtDateTime(ts){return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+function dateRange(start,end){const r=[];let d=new Date(start);const e=new Date(end);while(d<=e){r.push(new Date(d));d.setDate(d.getDate()+1);}return r;}
+
+// ═══ HOUR ENGINE ═══
+function parseTime(t){
+  const m=t.trim().toLowerCase().match(/^(\d+)(?::(\d+))?\s*(a|p)/);
+  if(!m)return null;
+  let h=parseInt(m[1]),mins=m[2]?parseInt(m[2]):0,ap=m[3];
+  if(ap==='p'&&h!==12)h+=12;if(ap==='a'&&h===12)h=0;
+  return h+mins/60;
+}
+function calcHours(label){
+  const parts=label.split(/[–\-]/);
+  if(parts.length!==2)return 0;
+  const s=parseTime(parts[0]),e=parseTime(parts[1]);
+  if(s===null||e===null)return 0;
+  let d=e-s;return d<=0?d+24:d;
+}
+function getWeeklyHours(empId,refDate){
+  const mon=getMonday(refDate);
+  let total=0;
+  for(let i=0;i<7;i++){
+    const key=fmtDate(addDays(mon,i));
+    (DATA.shifts[key]||[]).forEach(s=>{
+      if(s.empId===empId&&s.status!=='callout')total+=calcHours(s.label);
+    });
+  }
+  return Math.round(total*10)/10;
+}
+function getRemainingHours(empId,refDate){
+  return Math.max(0,DATA.maxHours-getWeeklyHours(empId,refDate));
+}
+
+// ═══ RELIABILITY ENGINE ═══
+// Transparency tool — tracks attendance patterns for management awareness.
+// Does NOT aggressively deprioritize anyone. Everyone gets equitable hours.
+// Score is informational: management sees the data, humans make the calls.
+function getReliability(empId){
+  let totalShifts=0, callouts=0, coversWorked=0;
+  const now=Date.now(), thirtyDays=30*24*60*60*1000;
+
+  for(const date in DATA.shifts){
+    (DATA.shifts[date]||[]).forEach(s=>{
+      if(s.empId===empId){
+        if(s.status==='active'||s.status==='vacation') totalShifts++;
+        if(s.status==='callout') { totalShifts++; callouts++; }
+        if(s.status==='active'&&(s.coverFor||
+          (s.note&&(s.note.includes('Cover for')||s.note.includes('Vac cover'))))) coversWorked++;
+      }
+    });
+  }
+
+  let recentCallouts=0;
+  (DATA.callouts||[]).forEach(c=>{
+    if(c.empId===empId&&(now-c.timestamp)<thirtyDays) recentCallouts++;
+  });
+
+  if(totalShifts===0) return {score:100,callouts:0,recentCallouts:0,coversWorked:0,totalShifts:0,label:'New',cls:'rel-high'};
+
+  const worked=totalShifts-callouts;
+  let score=Math.round((worked/totalShifts)*100);
+  score=Math.max(0,score-(recentCallouts*5));
+  score=Math.min(100,score+(coversWorked*2));
+
+  // Neutral, non-judgmental labels — this is data, not a character assessment
+  let label,cls;
+  if(score>=90){label='Consistent';cls='rel-high';}
+  else if(score>=70){label='Variable';cls='rel-med';}
+  else{label='Flagged';cls='rel-low';}
+
+  return{score,callouts,recentCallouts,coversWorked,totalShifts,label,cls};
+}
+
+function relBadgeHtml(empId,compact){
+  const r=getReliability(empId);
+  if(compact){
+    if(r.score>=90)return''; // don't clutter for reliable people
+    return`<span class="rel-badge ${r.cls}" title="Attendance: ${r.score}% · ${r.callouts} callouts · ${r.coversWorked} covers">${r.score}%</span>`;
+  }
+  const barColor=r.score>=90?'var(--success)':r.score>=70?'var(--warning)':'var(--danger)';
+  return`<span class="rel-badge ${r.cls}">${r.label} ${r.score}%</span>
+    <span class="rel-bar"><span class="rel-bar-fill" style="width:${r.score}%;background:${barColor}"></span></span>`;
+}
+
+// ═══ DEPT HELPERS ═══
+function getDept(id){return DATA.departments.find(d=>d.id===id);}
+function getDeptColor(id){const d=getDept(id);return d?d.color:'#888';}
+function getDeptChip(id){return id==='bldg'?'var(--dept-bldg-chip)':'var(--dept-pkg-chip)';}
+function getDeptBg(id){return id==='bldg'?'var(--dept-bldg-bg)':'var(--dept-pkg-bg)';}
+function getEmpsForDept(dId){return DATA.employees.filter(e=>e.depts&&e.depts.includes(dId));}
+function getEmp(id){return DATA.employees.find(e=>e.id===id);}
+
+// ═══ RENDER ALL ═══
+function renderAll(){renderDeptFilters();renderLegend();renderSchedule();renderEmployees();renderCoverageSettings();renderCallouts();document.getElementById('max-hours-input').value=DATA.maxHours;updateNavState();}
+
+function renderDeptFilters(){
+  document.getElementById('dept-filters').innerHTML='<span class="dept-filter-label">Show:</span>'+
+  DATA.departments.map(d=>{const a=deptVisibility[d.id];return`<button class="dept-toggle ${a?'active':''}" style="border-color:${d.color};${a?'background:'+d.color+';color:#fff':'color:'+d.color}" onclick="toggleDept('${d.id}')">${d.name}</button>`;}).join('');
+}
+function toggleDept(id){deptVisibility[id]=!deptVisibility[id];if(!Object.values(deptVisibility).some(v=>v)){deptVisibility[id]=true;return;}renderDeptFilters();renderSchedule();}
+function toggleCollapse(id){deptCollapsed[id]=!deptCollapsed[id];renderSchedule();}
+
+function renderLegend(){
+  document.getElementById('legend').innerHTML=`
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--dept-bldg-chip)"></span>Building</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--dept-pkg-chip)"></span>Pkg Room</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--callout-bg);border-color:var(--callout)"></span>Callout</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:#E8F4FD;border-color:#5BA3D9"></span>Vacation</span>
+  <span class="legend-item"><span class="legend-swatch coverage-ok" style="width:auto;height:auto;padding:1px 6px;border:0">3/3</span>OK</span>
+  <span class="legend-item"><span class="legend-swatch coverage-danger" style="width:auto;height:auto;padding:1px 6px;border:0">1/3</span>Gap</span>
+  <span class="legend-item"><span class="rel-badge rel-low" style="font-size:.68rem">72%</span>Attendance</span>`;
+}
+
+// ═══ SCHEDULE ═══
+function renderSchedule(){
+  const days=[];for(let i=0;i<7;i++)days.push(addDays(currentWeekStart,i));
+  document.getElementById('week-label').textContent=fmtShort(days[0])+' – '+fmtShort(days[6])+', '+days[6].getFullYear();
+  document.getElementById('schedule-header').innerHTML='<th style="min-width:150px">Employee</th>'+days.map(d=>`<th class="${isToday(d)?'today-col':''}">${fmtDay(d)}<br>${fmtShort(d)}</th>`).join('');
+
+  const body=document.getElementById('schedule-body');let html='';
+  const conflicts=findConflicts(days);
+
+  DATA.departments.forEach(dept=>{
+    if(!deptVisibility[dept.id])return;
+    const emps=getEmpsForDept(dept.id);
+    const collapsed=deptCollapsed[dept.id];
+
+    html+=`<tr class="dept-header-row"><td colspan="8" style="background:${getDeptBg(dept.id)}">
+      <div class="dept-header" onclick="toggleCollapse('${dept.id}')">
+        <span class="arrow ${collapsed?'collapsed':''}">▼</span>
+        <span class="dept-badge" style="background:${dept.color}">${dept.name}</span>
+        <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)">${emps.length} staff · Min ${dept.minPerDay}/day</span>
+      </div></td></tr>`;
+
+    html+=`<tr class="coverage-row" ${collapsed?'style="display:none"':''}><td style="background:var(--bg);font-size:.72rem;color:var(--text-muted);font-weight:600">Coverage</td>`;
+    days.forEach(d=>{
+      const key=fmtDate(d);
+      const active=(DATA.shifts[key]||[]).filter(s=>s.dept===dept.id&&s.status!=='callout');
+      const n=[...new Set(active.map(s=>s.empId))].length;
+      html+=`<td><span class="coverage-cell ${n>=dept.minPerDay?'coverage-ok':'coverage-danger'}">${n}/${dept.minPerDay}</span></td>`;
+    });
+    html+='</tr>';
+
+    if(!collapsed){
+      emps.forEach(emp=>{
+        const wkHrs=getWeeklyHours(emp.id,currentWeekStart);
+        const remain=Math.max(0,DATA.maxHours-wkHrs);
+        const hrsCls=wkHrs>=DATA.maxHours?'at-cap':wkHrs>=DATA.maxHours-8?'near-cap':'';
+        const relBadge=relBadgeHtml(emp.id,true);
+        html+=`<tr><td><span class="emp-cell-dept-dot" style="background:${dept.color}"></span>${emp.name}${relBadge}<span class="emp-hrs ${hrsCls}">${wkHrs}/${DATA.maxHours} hrs</span></td>`;
+        days.forEach(d=>{
+          const key=fmtDate(d);
+          const empShifts=(DATA.shifts[key]||[]).filter(s=>s.empId===emp.id&&s.dept===dept.id);
+          const hasConflict=conflicts.has(emp.id+'|'+key);
+          const chips=empShifts.map(s=>{
+            const isCO=s.status==='callout',isVac=s.status==='vacation';
+            let cls='shift-chip';
+            if(isCO)cls+=' callout-shift';else if(isVac)cls+=' vacation-shift';else if(hasConflict)cls+=' conflict';
+            const bg=isCO||isVac?'':` style="background:${getDeptChip(dept.id)}"`;
+            return`<div class="${cls}"${bg} title="${s.label}${s.note?' · '+s.note:''}">
+              ${isCO?'<span style="color:var(--callout);font-size:.7rem">✕</span>':''}${isVac?'<span style="font-size:.7rem">🏖</span>':''}
+              ${hasConflict&&!isCO&&!isVac?'<span style="color:var(--danger);font-size:.7rem">⚠</span>':''}
+              <span class="${isCO?'shift-label':''}">${s.label}</span>
+              ${s.note?'<br><small style="opacity:.7">'+s.note+'</small>':''}
+              <span class="shift-actions">
+                ${!isCO&&!isVac?`<button class="act-btn" onclick="markCallout('${key}','${s.id}',event)" title="Callout" style="color:var(--callout)">⊘</button>`:''}
+                ${isCO?`<button class="act-btn" onclick="findCover('${key}','${s.id}',event)" title="Find cover" style="color:var(--accent)">🔍</button>`:''}
+                <button class="act-btn" onclick="removeShift('${key}','${s.id}',event)" title="Delete" style="color:var(--danger)">✕</button>
+              </span></div>`;
+          }).join('');
+          html+=`<td>${chips}<div class="add-shift-btn" onclick="openAddShift('${emp.id}','${key}','${dept.id}')">+ shift</div></td>`;
+        });
+        html+='</tr>';
+      });
+    }
+  });
+  if(!DATA.employees.length)html='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">Add employees first.</td></tr>';
+  body.innerHTML=html;
+}
+
+function findConflicts(days){
+  const c=new Set();days.forEach(d=>{const key=fmtDate(d);const byEmp={};
+  (DATA.shifts[key]||[]).filter(s=>s.status!=='callout').forEach(s=>{if(!byEmp[s.empId])byEmp[s.empId]=new Set();byEmp[s.empId].add(s.dept);});
+  Object.entries(byEmp).forEach(([id,depts])=>{if(depts.size>1)c.add(id+'|'+key);});});return c;
+}
+
+// ═══ SMART COVER ALGORITHM ═══
+function rankCoverCandidates(date,dept,shiftLabel,excludeEmpId){
+  const deptEmps=getEmpsForDept(dept);
+  const dayShifts=(DATA.shifts[date]||[]).filter(s=>s.status!=='callout');
+  const busyIds=new Set(dayShifts.map(s=>s.empId));
+  const shiftHrs=calcHours(shiftLabel);
+
+  return deptEmps
+    .filter(e=>e.id!==excludeEmpId)
+    .map(e=>{
+      const free=!busyIds.has(e.id);
+      const wkHrs=getWeeklyHours(e.id,new Date(date+'T12:00:00'));
+      const remain=Math.max(0,DATA.maxHours-wkHrs);
+      const canTake=remain>=shiftHrs;
+      const existing=dayShifts.filter(s=>s.empId===e.id);
+      const rel=getReliability(e.id);
+      // EQUITY-FIRST ranking:
+      // 1. Availability tier (free+capacity > free+capped > busy)
+      // 2. Most remaining hours (distributes work equitably)
+      // 3. Reliability as SOFT tiebreaker only (never overrides hours)
+      let tier=0;
+      if(free&&canTake)tier=3;
+      else if(free&&!canTake)tier=2;
+      else if(!free&&canTake)tier=1;
+      return{emp:e,free,canTake,wkHrs,remain,existing,tier,shiftHrs,rel};
+    })
+    .sort((a,b)=>{
+      if(a.tier!==b.tier)return b.tier-a.tier;       // availability first
+      if(Math.abs(a.remain-b.remain)>1)return b.remain-a.remain; // then equity (most hours left)
+      return b.rel.score-a.rel.score;                  // reliability only breaks ties
+    });
+}
+
+function findCover(date,shiftId,e){
+  e.stopPropagation();
+  const shift=(DATA.shifts[date]||[]).find(s=>s.id===shiftId);if(!shift)return;
+  const emp=getEmp(shift.empId),dept=getDept(shift.dept);
+  const shiftHrs=calcHours(shift.label);
+
+  document.getElementById('cover-title').textContent='Find Cover: '+shift.label+' ('+shiftHrs+'hrs)';
+  document.getElementById('cover-subtitle').textContent=
+    (emp?emp.name:'?')+' · '+(dept?dept.name:'?')+' · '+new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+
+  const candidates=rankCoverCandidates(date,shift.dept,shift.label,shift.empId);
+  const list=document.getElementById('cover-list');
+
+  if(!candidates.length){list.innerHTML='<li style="color:var(--text-muted);padding:20px;text-align:center">No candidates.</li>';openModal('modal-cover');return;}
+
+  list.innerHTML=candidates.map(c=>{
+    const phone=c.emp.phone||'';
+    const phoneHtml=phone?`<a href="tel:${phone.replace(/\D/g,'')}" class="cover-phone">📞 ${phone}</a>`:'<span style="font-size:.75rem;color:var(--text-muted)">No phone</span>';
+    let statusHtml;
+    if(c.free&&c.canTake) statusHtml='<span class="cover-status cover-free">FREE · '+c.remain+'hrs left</span>';
+    else if(c.free&&!c.canTake) statusHtml='<span class="cover-status cover-capped">FREE but at '+c.wkHrs+'/'+DATA.maxHours+'hrs</span>';
+    else statusHtml='<span class="cover-status cover-busy">WORKING: '+c.existing.map(s=>s.label).join(', ')+' · '+c.remain+'hrs left</span>';
+
+    const pct=Math.min(100,c.wkHrs/DATA.maxHours*100);
+    const barColor=c.wkHrs>=DATA.maxHours?'var(--danger)':c.wkHrs>=DATA.maxHours-8?'var(--warning)':'var(--success)';
+    const assignBtn=c.free?`<button class="btn btn-sm btn-primary" onclick="assignCover('${date}','${shiftId}','${c.emp.id}')">Assign</button>`:'';
+
+    const relHtml=relBadgeHtml(c.emp.id,false);
+    const attendanceNote=c.rel.callouts>0?`<div style="font-size:.72rem;color:var(--text-muted)">${c.rel.callouts} callout${c.rel.callouts>1?'s':''} on record${c.rel.recentCallouts>0?' · '+c.rel.recentCallouts+' in last 30d':''}</div>`:'';
+    const coverNote=c.rel.coversWorked>0?`<span style="font-size:.72rem;color:var(--success)">Has covered ${c.rel.coversWorked} shift${c.rel.coversWorked>1?'s':''}</span>`:'';
+
+    return`<li><div style="flex:1"><div class="cover-name">${c.emp.name} ${relHtml}</div>
+      <div style="margin-top:3px">${statusHtml}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+        <span style="font-size:.72rem;color:var(--text-muted)">Hours:</span>
+        <span class="hrs-bar"><span class="hrs-bar-fill" style="width:${pct}%;background:${barColor}"></span></span>
+        <span style="font-size:.72rem">${c.wkHrs}/${DATA.maxHours}</span>
+      </div>
+      ${attendanceNote}${coverNote?'<div style="margin-top:2px">'+coverNote+'</div>':''}
+      <div style="margin-top:4px">${phoneHtml}</div></div>${assignBtn}</li>`;
+  }).join('');
+
+  openModal('modal-cover');
+}
+
+// ═══ CALLOUT ═══
+function markCallout(date,shiftId,e){
+  e.stopPropagation();
+  const shift=(DATA.shifts[date]||[]).find(s=>s.id===shiftId);if(!shift)return;
+  const emp=getEmp(shift.empId);
+  if(!confirm(`Mark ${emp?emp.name:'?'} (${shift.label}) as called out?`))return;
+  shift.status='callout';shift.note=(shift.note?shift.note+' · ':'')+'CALLED OUT';
+  DATA.callouts.push({id:'co'+Date.now(),shiftId,date,empId:shift.empId,empName:emp?emp.name:'?',dept:shift.dept,shiftLabel:shift.label,timestamp:Date.now(),resolved:false,coveredBy:null});
+  saveData();renderSchedule();renderCallouts();
+  findCover(date,shiftId,e);
+}
+function assignCover(date,origId,coverId){
+  const orig=(DATA.shifts[date]||[]).find(s=>s.id===origId);if(!orig)return;
+  const coverEmp=getEmp(coverId);
+  if(!DATA.shifts[date])DATA.shifts[date]=[];
+  DATA.shifts[date].push({id:'s'+Date.now()+Math.random().toString(36).slice(2,5),empId:coverId,label:orig.label,dept:orig.dept,note:'Cover for '+(getEmp(orig.empId)||{}).name,status:'active',coverFor:orig.empId});
+  const co=DATA.callouts.find(c=>c.shiftId===origId&&!c.resolved);
+  if(co){co.resolved=true;co.coveredBy=coverEmp?coverEmp.name:'?';}
+  saveData();closeModal('modal-cover');renderSchedule();renderCallouts();
+}
+
+function renderCallouts(){
+  const log=document.getElementById('callout-log'),empty=document.getElementById('callout-empty'),badge=document.getElementById('callout-badge');
+  const open=DATA.callouts.filter(c=>!c.resolved);
+  if(open.length>0){badge.textContent=open.length;badge.style.display='inline';}else badge.style.display='none';
+  if(!DATA.callouts.length){log.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  log.innerHTML=[...DATA.callouts].reverse().map(c=>{const dept=getDept(c.dept);
+    return`<li class="${c.resolved?'callout-resolved':''}"><span style="font-size:1.1rem;flex-shrink:0;margin-top:2px">${c.resolved?'✅':'🔴'}</span>
+    <div class="callout-info"><strong>${c.empName}</strong> · ${c.shiftLabel} · <span style="color:${dept?dept.color:'#888'}">${dept?dept.name:'?'}</span>
+    <div class="callout-meta">${fmtDateTime(c.timestamp)}${c.resolved?' · Covered by <strong>'+c.coveredBy+'</strong>':' · <span style="color:var(--callout);font-weight:600">NEEDS COVER</span>'}</div></div></li>`;
+  }).join('');
+}
+function clearResolvedCallouts(){DATA.callouts=DATA.callouts.filter(c=>!c.resolved);saveData();renderCallouts();}
+
+// ═══ VACATION AUTO-ASSIGN ═══
+function openVacation(){
+  const sel=document.getElementById('vac-emp');
+  sel.innerHTML=DATA.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('vac-start').value='';document.getElementById('vac-end').value='';
+  document.getElementById('vac-preview-area').style.display='none';
+  document.getElementById('vac-confirm-btn').style.display='none';
+  document.getElementById('vac-preview-btn').style.display='';
+  vacPlan=null;
+  openModal('modal-vacation');
+}
+
+function previewVacation(){
+  const empId=document.getElementById('vac-emp').value;
+  const startStr=document.getElementById('vac-start').value;
+  const endStr=document.getElementById('vac-end').value;
+  if(!empId||!startStr||!endStr){alert('Select employee and dates.');return;}
+  const emp=getEmp(empId);
+  const start=new Date(startStr+'T12:00:00'),end=new Date(endStr+'T12:00:00');
+  if(end<start){alert('End date must be after start.');return;}
+
+  const days=dateRange(start,end);
+  vacPlan=[];
+  const preview=document.getElementById('vac-preview');
+  let html='',covered=0,total=0;
+
+  // For each day, find this employee's shifts and attempt auto-assignment
+  // Track simulated hours to avoid double-counting across vacation days
+  const simExtra={}; // empId -> extra hours assigned during this vacation
+
+  days.forEach(day=>{
+    const key=fmtDate(day);
+    const empShifts=(DATA.shifts[key]||[]).filter(s=>s.empId===empId&&s.status==='active');
+    if(!empShifts.length){
+      html+=`<li><span>${fmtDay(day)} ${fmtShort(day)}</span><span style="color:var(--text-muted)">No shifts</span></li>`;
+      return;
+    }
+
+    empShifts.forEach(shift=>{
+      total++;
+      const shiftHrs=calcHours(shift.label);
+      // Get candidates
+      const candidates=rankCoverCandidates(key,shift.dept,shift.label,empId)
+        .filter(c=>c.free) // only free people
+        .map(c=>{
+          // Adjust remaining hours for already-planned vacation covers
+          const extra=simExtra[c.emp.id]||0;
+          const adjRemain=c.remain-extra;
+          return{...c,adjRemain};
+        })
+        .filter(c=>c.adjRemain>=shiftHrs); // must have room
+
+      if(candidates.length>0){
+        // EQUITY-FIRST weighted random:
+        // Weight is almost entirely hours-based. Reliability adds only a tiny nudge
+        // (5% influence max) so it never overrides equitable hour distribution.
+        // A 60% reliability employee with 20hrs left ≈ same chance as 100% with 20hrs.
+        candidates.forEach(c=>{ c.weight=c.adjRemain*(0.95+0.05*(c.rel.score/100)); });
+        const totalWeight=candidates.reduce((s,c)=>s+c.weight,0);
+        let rand=Math.random()*totalWeight,pick=candidates[0];
+        for(const c of candidates){rand-=c.weight;if(rand<=0){pick=c;break;}}
+
+        vacPlan.push({date:key,shiftId:shift.id,coverId:pick.emp.id,coverName:pick.emp.name,label:shift.label,dept:shift.dept});
+        simExtra[pick.emp.id]=(simExtra[pick.emp.id]||0)+shiftHrs;
+        covered++;
+        const relTag=pick.rel.score<70?` <span class="rel-badge rel-low">${pick.rel.score}%</span>`:'';
+        html+=`<li><span>${fmtDay(day)} ${fmtShort(day)} · ${shift.label}</span><span class="vac-ok">→ ${pick.emp.name}${relTag} (${Math.round(pick.adjRemain-shiftHrs)}hrs left)</span></li>`;
+      } else {
+        vacPlan.push({date:key,shiftId:shift.id,coverId:null,label:shift.label,dept:shift.dept});
+        html+=`<li><span>${fmtDay(day)} ${fmtShort(day)} · ${shift.label}</span><span class="vac-fail">⚠ No one available</span></li>`;
+      }
+    });
+  });
+
+  preview.innerHTML=html;
+  document.getElementById('vac-summary').innerHTML=
+    `<strong>${covered}/${total}</strong> shifts covered.`+(covered<total?' <span style="color:var(--danger)">Manual assignment needed for gaps.</span>':'<span style="color:var(--success)"> All covered!</span>');
+  document.getElementById('vac-preview-area').style.display='block';
+  document.getElementById('vac-confirm-btn').style.display='';
+  document.getElementById('vac-preview-btn').style.display='none';
+}
+
+function confirmVacation(){
+  if(!vacPlan||!vacPlan.length){alert('Preview first.');return;}
+  const empId=document.getElementById('vac-emp').value;
+  const emp=getEmp(empId);
+
+  vacPlan.forEach(p=>{
+    // Mark original shift as vacation
+    const shift=(DATA.shifts[p.date]||[]).find(s=>s.id===p.shiftId);
+    if(shift){shift.status='vacation';shift.note='VACATION';}
+
+    // Add cover shift if assigned
+    if(p.coverId){
+      if(!DATA.shifts[p.date])DATA.shifts[p.date]=[];
+      DATA.shifts[p.date].push({
+        id:'s'+Date.now()+Math.random().toString(36).slice(2,5),
+        empId:p.coverId,label:p.label,dept:p.dept,
+        note:'Vac cover for '+(emp?emp.name:'?'),status:'active',coverFor:empId
+      });
+    }
+  });
+
+  saveData();closeModal('modal-vacation');renderSchedule();
+  const covered=vacPlan.filter(p=>p.coverId).length;
+  const total=vacPlan.length;
+  alert(`Vacation scheduled for ${emp?emp.name:'?'}.\n${covered}/${total} shifts auto-covered.${covered<total?'\nCheck the schedule for uncovered gaps.':''}`);
+  vacPlan=null;
+}
+
+// ═══ SHIFTS ═══
+function openAddShift(empId,date,dept){document.getElementById('shift-emp').value=empId;document.getElementById('shift-date').value=date;document.getElementById('shift-dept').value=dept;document.getElementById('shift-type').value='7a–3p';document.getElementById('shift-note').value='';document.getElementById('custom-time-fields').style.display='none';openModal('modal-shift');}
+function toggleCustomTime(){document.getElementById('custom-time-fields').style.display=document.getElementById('shift-type').value==='custom'?'block':'none';}
+function saveShift(){const empId=document.getElementById('shift-emp').value,date=document.getElementById('shift-date').value,dept=document.getElementById('shift-dept').value,type=document.getElementById('shift-type').value,note=document.getElementById('shift-note').value.trim();let label=type;if(type==='custom'){const s=document.getElementById('shift-start').value,e=document.getElementById('shift-end').value;if(!s||!e)return;label=s+'–'+e;}if(!DATA.shifts[date])DATA.shifts[date]=[];DATA.shifts[date].push({id:'s'+Date.now()+Math.random().toString(36).slice(2,5),empId,label,dept,note,status:'active'});saveData();closeModal('modal-shift');renderSchedule();}
+function removeShift(date,shiftId,e){e.stopPropagation();if(!confirm('Remove shift?'))return;DATA.shifts[date]=(DATA.shifts[date]||[]).filter(s=>s.id!==shiftId);saveData();renderSchedule();}
+
+// ═══ EMPLOYEES ═══
+function openAddEmployee(){document.getElementById('emp-modal-title').textContent='Add Employee';document.getElementById('emp-name').value='';document.getElementById('emp-role').value='';document.getElementById('emp-phone').value='';document.getElementById('emp-dept-checks').innerHTML=DATA.departments.map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer"><input type="checkbox" value="${d.id}" checked> ${d.name}</label>`).join('');delete document.getElementById('emp-modal-title').dataset.editId;openModal('modal-employee');document.getElementById('emp-name').focus();}
+function openEditEmployee(id){const emp=getEmp(id);if(!emp)return;document.getElementById('emp-modal-title').textContent='Edit Employee';document.getElementById('emp-name').value=emp.name;document.getElementById('emp-role').value=emp.role||'';document.getElementById('emp-phone').value=emp.phone||'';document.getElementById('emp-dept-checks').innerHTML=DATA.departments.map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer"><input type="checkbox" value="${d.id}" ${(emp.depts||[]).includes(d.id)?'checked':''}> ${d.name}</label>`).join('');document.getElementById('emp-modal-title').dataset.editId=id;openModal('modal-employee');}
+function saveEmployee(){const name=document.getElementById('emp-name').value.trim(),role=document.getElementById('emp-role').value.trim(),phone=document.getElementById('emp-phone').value.trim();if(!name)return;const depts=[...document.querySelectorAll('#emp-dept-checks input:checked')].map(c=>c.value);if(!depts.length){alert('Pick a department.');return;}const editId=document.getElementById('emp-modal-title').dataset.editId;if(editId){const emp=getEmp(editId);if(emp){emp.name=name;emp.role=role;emp.phone=phone;emp.depts=depts;}delete document.getElementById('emp-modal-title').dataset.editId;}else{DATA.employees.push({id:'e'+Date.now()+Math.random().toString(36).slice(2,5),name,role,phone,depts});}saveData();closeModal('modal-employee');renderAll();}
+function deleteEmployee(id){const emp=getEmp(id);if(!confirm('Remove '+emp.name+'?'))return;DATA.employees=DATA.employees.filter(e=>e.id!==id);for(const d in DATA.shifts)DATA.shifts[d]=DATA.shifts[d].filter(s=>s.empId!==id);saveData();renderAll();}
+function renderEmployees(){const list=document.getElementById('emp-list'),empty=document.getElementById('emp-empty');if(!DATA.employees.length){list.innerHTML='';empty.style.display='block';return;}empty.style.display='none';list.innerHTML=DATA.employees.map(emp=>{const r=getReliability(emp.id);return`<li><div><span>${emp.name}</span><span class="emp-dept-badges">${(emp.depts||[]).map(d=>{const dept=getDept(d);return dept?`<span class="emp-dept-badge" style="background:${dept.color}">${dept.name.split(' ')[0]}</span>`:''}).join('')}</span>
+      ${relBadgeHtml(emp.id,false)}
+      <div style="font-size:.72rem;color:var(--text-muted)">${r.totalShifts} shifts · ${r.callouts} callouts · ${r.coversWorked} covers worked</div>
+      ${emp.phone?`<div class="emp-phone">📞 ${emp.phone}</div>`:''}</div><div class="emp-li-actions"><button class="btn btn-sm" onclick="openEditEmployee('${emp.id}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEmployee('${emp.id}')">Remove</button></div></li>`}).join('');}
+
+// ═══ SETTINGS ═══
+function renderCoverageSettings(){document.getElementById('coverage-settings').innerHTML=DATA.departments.map(d=>`<div class="setting-row"><div><div class="setting-label">Min coverage: ${d.name}</div><div class="setting-desc">Gaps pulse red below this</div></div><input type="number" class="setting-input" min="1" max="20" value="${d.minPerDay}" onchange="updateMinCoverage('${d.id}',this.value)"/></div>`).join('');}
+function updateMinCoverage(dId,v){const d=getDept(dId);if(d){d.minPerDay=parseInt(v)||1;saveData();renderSchedule();}}
+function updateMaxHours(v){DATA.maxHours=parseInt(v)||40;saveData();renderSchedule();}
+
+// ═══ PASSWORD ═══
+function openChangePassword(){['pw-current','pw-new','pw-confirm'].forEach(id=>document.getElementById(id).value='');document.getElementById('pw-error').style.display='none';openModal('modal-password');}
+function changePassword(){const cur=document.getElementById('pw-current').value,nw=document.getElementById('pw-new').value,conf=document.getElementById('pw-confirm').value,err=document.getElementById('pw-error');if(cur!==DATA.password){err.textContent='Wrong password';err.style.display='block';return;}if(nw.length<4){err.textContent='Min 4 characters';err.style.display='block';return;}if(nw!==conf){err.textContent="Don't match";err.style.display='block';return;}DATA.password=nw;saveData();closeModal('modal-password');alert('Updated.');}
+
+// ═══ UTIL ═══
+function switchTab(name,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('tab-'+name).classList.add('active');}
+function openModal(id){document.getElementById(id).classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('active');});});
+// ═══ NAVIGATION WITH 4-MONTH FORWARD LIMIT ═══
+const MAX_FUTURE_MONTHS=4;
+function getMaxDate(){const d=new Date();d.setMonth(d.getMonth()+MAX_FUTURE_MONTHS);return getMonday(d);}
+
+function changeWeek(dir){
+  const proposed=addDays(currentWeekStart,dir*7);
+  if(dir>0&&proposed>getMaxDate())return; // enforce forward limit
+  currentWeekStart=proposed;
+  renderSchedule();updateNavState();
+}
+function goToday(){currentWeekStart=getMonday(new Date());renderSchedule();updateNavState();}
+
+function updateNavState(){
+  const maxD=getMaxDate();
+  const nextWeek=addDays(currentWeekStart,7);
+  const atLimit=nextWeek>maxD;
+  const nextBtn=document.getElementById('nav-next');
+  const note=document.getElementById('nav-limit-note');
+  if(atLimit){
+    nextBtn.classList.add('nav-disabled');
+    note.textContent='4-month limit';note.style.display='';
+  }else{
+    nextBtn.classList.remove('nav-disabled');
+    note.style.display='none';
+  }
+}
+
+// ═══ LIVE CLOCK ═══
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock-time').textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clock-date').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+updateClock();
+setInterval(updateClock,1000);
+function exportData(){const b=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='schedule_backup_'+fmtDate(new Date())+'.json';a.click();}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);if(!d.employees||!d.shifts)throw 0;if(confirm('Replace all data?')){DATA=d;if(!DATA.callouts)DATA.callouts=[];if(!DATA.maxHours)DATA.maxHours=40;saveData();renderAll();alert('Imported.');}}catch(x){alert('Invalid file.');}};r.readAsText(f);e.target.value='';}
+function clearAllData(){if(!confirm('Delete ALL data?'))return;if(!confirm('Last chance.'))return;DATA.employees=[];DATA.shifts={};DATA.callouts=[];saveData();renderAll();}
+
+// ═══ TIMESHEETS (Supabase) ═══
+const SB_URL='https://veclqpzwkpvwmqjoyrax.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlY2xxcHp3a3B2d21xam95cmF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NjYyMzUsImV4cCI6MjEwMTM0MjIzNX0.oKU_7nITkWme6x5NyZyY7_nHfQGJ2ptMwZwP2VokZHA';
+
+async function sbGet(path){
+  const res=await fetch(SB_URL+'/rest/v1/'+path,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  if(!res.ok)throw new Error(res.statusText);
+  return res.json();
+}
+
+function setTsToday(){
+  document.getElementById('ts-date').value=fmtDate(new Date());
+  loadTimesheets();
+}
+
+async function loadTimesheets(){
+  const dateStr=document.getElementById('ts-date').value;
+  if(!dateStr)return;
+  const content=document.getElementById('ts-content');
+  content.innerHTML='<p style="color:var(--text-muted);text-align:center;padding:20px">Loading...</p>';
+
+  try{
+    const dayStart=dateStr+'T00:00:00.000Z';
+    const dayEnd=dateStr+'T23:59:59.999Z';
+    const rows=await sbGet(`timeclock?timestamp=gte.${dayStart}&timestamp=lte.${dayEnd}&order=timestamp.asc`);
+
+    if(!rows.length){
+      content.innerHTML='<p style="color:var(--text-muted);text-align:center;padding:30px">No clock-in data for this date.</p>';
+      return;
+    }
+
+    // Group by employee
+    const byEmp={};
+    rows.forEach(r=>{
+      if(!byEmp[r.employee_name])byEmp[r.employee_name]=[];
+      byEmp[r.employee_name].push(r);
+    });
+
+    // Calculate hours for each employee
+    const empData=Object.entries(byEmp).map(([name,entries])=>{
+      let totalMins=0;
+      let clockInTime=null;
+      let firstIn=null,lastOut=null;
+      const pairs=[];
+
+      entries.forEach(e=>{
+        const t=new Date(e.timestamp);
+        if(e.action==='clock_in'){
+          clockInTime=t;
+          if(!firstIn)firstIn=t;
+        }else if(e.action==='clock_out'&&clockInTime){
+          const mins=(t-clockInTime)/(1000*60);
+          totalMins+=mins;
+          pairs.push({in:clockInTime,out:t,mins});
+          lastOut=t;
+          clockInTime=null;
+        }
+      });
+
+      // Still clocked in?
+      const stillIn=clockInTime!==null;
+      if(stillIn){
+        const now=new Date();
+        totalMins+=(now-clockInTime)/(1000*60);
+      }
+
+      // Compare to scheduled shift
+      const key=dateStr;
+      const scheduled=(DATA.shifts[key]||[]).filter(s=>s.empId && s.status==='active');
+      // Find by name match
+      const emp=DATA.employees.find(e=>e.name===name);
+      const empShifts=emp?scheduled.filter(s=>s.empId===emp.id):[];
+      const scheduledHrs=empShifts.reduce((s,sh)=>s+calcHours(sh.label),0);
+
+      return{name,totalMins,totalHrs:Math.round(totalMins/60*10)/10,firstIn,lastOut,stillIn,pairs,scheduledHrs,empShifts};
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+
+    // Summary stats
+    const totalPeople=empData.length;
+    const totalHrs=Math.round(empData.reduce((s,e)=>s+e.totalMins,0)/60*10)/10;
+    const stillIn=empData.filter(e=>e.stillIn).length;
+
+    let html=`<div class="ts-summary">
+      <div class="ts-stat"><div class="ts-stat-val">${totalPeople}</div><div class="ts-stat-label">Employees</div></div>
+      <div class="ts-stat"><div class="ts-stat-val">${totalHrs}</div><div class="ts-stat-label">Total Hours</div></div>
+      <div class="ts-stat"><div class="ts-stat-val">${stillIn}</div><div class="ts-stat-label">Still Clocked In</div></div>
+    </div>`;
+
+    html+=`<table class="ts-table"><thead><tr>
+      <th>Employee</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Scheduled</th><th>Diff</th>
+    </tr></thead><tbody>`;
+
+    empData.forEach(e=>{
+      const inStr=e.firstIn?e.firstIn.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—';
+      const outStr=e.stillIn?'<span style="color:var(--success)">⬤ Still in</span>':(e.lastOut?e.lastOut.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—');
+      const schStr=e.scheduledHrs>0?(e.empShifts.map(s=>s.label).join(', ')+' ('+e.scheduledHrs+'hrs)'):'—';
+      let diffHtml='—';
+      if(e.scheduledHrs>0){
+        const diff=e.totalHrs-e.scheduledHrs;
+        const absDiff=Math.abs(Math.round(diff*10)/10);
+        if(Math.abs(diff)<0.5)diffHtml=`<span class="ts-diff ts-diff-ok">On track</span>`;
+        else if(diff>0)diffHtml=`<span class="ts-diff ts-diff-ok">+${absDiff}hrs</span>`;
+        else diffHtml=`<span class="ts-diff ts-diff-late">-${absDiff}hrs</span>`;
+      }
+      html+=`<tr>
+        <td><strong>${e.name}</strong></td>
+        <td class="ts-in">${inStr}</td>
+        <td class="ts-out">${outStr}</td>
+        <td class="ts-total">${e.totalHrs}hrs</td>
+        <td style="font-size:.82rem">${schStr}</td>
+        <td>${diffHtml}</td>
+      </tr>`;
+    });
+
+    html+='</tbody></table>';
+    content.innerHTML=html;
+
+  }catch(err){
+    content.innerHTML=`<p style="color:var(--danger);text-align:center;padding:20px">Could not load timesheet data.<br><span style="font-size:.78rem;color:var(--text-muted)">${err.message}</span></p>`;
+  }
+}
+</script>
+<nav style="background:var(--surface);border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:center;gap:20px;flex-wrap:wrap">
+  <span style="font-size:.82rem;color:var(--text-muted);font-weight:600">📅 Schedule</span>
+  <a href="timeclock.html" style="font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600">⏱ Time Clock</a>
+  <a href="timeclock-qr.html" style="font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600">📱 QR Code Setup</a>
+</nav>
+</body></html>
